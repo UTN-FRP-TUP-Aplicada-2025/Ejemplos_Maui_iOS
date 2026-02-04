@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/github.workflow/">
+    <File Path="../github.workflow/cd-iOS-main.yml" />
+  </Folder>
+  <Folder Name="/Utilities/">
+    <File Path="../Utilities/simular.sh" />
+  </Folder>
+  <Project Path="Ejemplo_iOS/Ejemplo_iOS.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+</Solution>
