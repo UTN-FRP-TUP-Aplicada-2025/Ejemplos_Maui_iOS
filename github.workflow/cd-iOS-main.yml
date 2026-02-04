@@ -1,0 +1,512 @@
+name: CD iOS MAIN
+
+on:
+  
+  push:
+    branches: 
+      - main
+      
+    paths-ignore: 
+      - "**.md"
+      - '**/*.gitignore'
+      - '**/*.gitattributes'
+
+  workflow_call:
+
+env:
+  XCODE_VERSION: '26.0' 
+
+  XCODE_VERSION_SHORT: '26.0'
+
+  XCODE_FILE_INSTALLER: 'Xcode_26_Universal.xip'
+  XCODE_GOOGLE_FILE_INSTALLER_ID: '1GoDmCUBOMKM5nnXCXxxnAgoKpSwZvaMP'
+
+  DOTNET_VERSION: '10.0.101'
+  DOTNET_TARGET_VERSION: 'net10.0'
+
+  DOTNET_VERSION_WORKLOAD: '9.0.308.2'
+
+  PACKAGE_NAME: 'com.ejemplos.ios'
+  PROJECT_FOLDER: 'Ejemplo_iOS'
+  PROJECT_FILE: './Ejemplo_iOS/Ejemplo_iOS.csproj'
+  RUNTIME_IDENTIFIER_SIMULATOR: 'iossimulator-arm64' 
+  BUILD_CONFIG_SIMULATOR: 'Release'
+  DEVICE_SIMULATOR: 'iPhone 17 Pro Max'
+
+  DOTNET_WORKLOAD_INSTALL_ADDITIONAL_ARGS: --ios-simulator-runtime=26.0
+  MD_APPLE_SDK_ROOT: /Applications/Xcode_26.0.app
+
+jobs:
+  publish-ios:
+    runs-on: macos-15
+    name: iOS Publish
+
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v4
+      with:
+        path: ./
+
+    - name: Verificar arquitectura del runner (la mv) 
+      run: |
+        echo "Arquitectura: $(uname -m)"
+        # Arquitectura: arm64  
+        
+        echo "CPU: $(sysctl -n machdep.cpu.brand_string)"
+        # CPU: Apple M1 (Virtual)
+        
+        echo "Model hardware: $(sysctl -n hw.model)"
+        # Model hardware: VirtualMac2,1
+
+        echo "Cores numbers: $(sysctl -n hw.ncpu)"
+        # Cores numbers: 3
+
+    - name: Checkout the code
+      comments: "clona del repositorio"
+      uses: actions/checkout@v4
+      with:
+        path: ./
+
+    - name: Info del workspace
+      run: |
+        echo "Current workspace: ${{ github.workspace }}"
+
+        ls -R ${{ github.workspace }}
+        
+    - name: "instalando utilidades para descarga desde google drive gdown"
+      run: |
+        set -euxo pipefail
+        df -h /
+        pipx install gdown
+        which gdown
+
+    - name: "Xcode: Descarga instalador desde google drive"
+      run: |
+        echo "XCODE_GOOGLE_FILE_ID: ${{ env.XCODE_GOOGLE_FILE_INSTALLER_ID }}"
+        FILE_ID="${{ env.XCODE_GOOGLE_FILE_INSTALLER_ID }}"
+
+        echo "FILENAME: ${{ env.XCODE_FILE_INSTALLER }}"               
+
+        gdown --id ${{ env.XCODE_GOOGLE_FILE_INSTALLER_ID }} -O ${{ env.XCODE_FILE_INSTALLER }}
+
+        ls -lsh ${{ env.XCODE_FILE_DOWNLOAD }}
+
+    - name: "XCODE. Descomprimir Xcode instalador"
+      run: |
+        set -euxo pipefail
+        
+        xip --expand ${{ env.XCODE_FILE_INSTALLER }}      
+        test -d Xcode.app && echo "Xcode expandido OK"
+
+        rm -f $FILENAME
+
+        echo "Listando directorios: $(ls -lh)"
+
+        echo "Espacio disponible: $(df -h /)"
+        
+    - name: "XCODE. Instalar descarga"
+      run: |
+        set -euxo pipefail
+
+        XCODE_PATH="/Applications/Xcode_${{ env.XCODE_VERSION }}.app"
+
+        echo "Applictions inicial: $(ls -lsh /Applications/)"
+
+        sudo rm -rf /Applications/Xcode*.app
+
+        sudo mv Xcode.app $XCODE_PATH
+
+        sudo ln -s $XCODE_PATH /Applications/Xcode.app
+
+        echo "Seleccionado Xcode"
+        sudo xcode-select --switch $XCODE_PATH
+        
+        echo "Aceptación de licencia - instala y configura componentes adicionales"
+        sudo xcodebuild -runFirstLaunch
+       
+        # solo acepta licencia
+        sudo xcodebuild -license accept
+        
+        xcodebuild -version
+
+        echo "Applictions: $(ls -lsh /Applications/)"
+       
+    # verificación de xcode y ruta de instalación
+      
+    - name: XCODE. Verificando actual (xcode y xcodebuild)
+      run: |
+        echo "Applications path: $(ls -l /Applications/)"
+        # ahi apunta correctamente al 16.4 - la versión configurada en cd-main.yml
+        # drwxr-xr-x   3 runner  staff   96 Dec  5 09:21 Xcode_26.2.app
+        # lrwxr-xr-x   1 root    admin   28 Jan  3 17:20 Xcode.app -> /Applications/Xcode_26.2.app
+        
+        echo "Applications path recursivo: $(ls -l /Applications/Xcode_${{ inputs.xcode-version }}.app)"
+
+        echo "Ruta actual XCode: $(xcode-select -p)"
+        # Ruta actual XCode: /Applications/Xcode_26.2.app/Contents/Developer
+
+        echo "xcodebuild sdks version: $(xcodebuild -showsdks)"
+        # DriverKit 25.2                          	-sdk driverkit25.2
+        # iOS SDKs: iOS 26.2                      	-sdk iphoneos26.2
+        # iOS Simulator SDKs: Simulator - iOS 26.2 	-sdk iphonesimulator26.2
+
+        echo "xcode build xcode version: $(xcodebuild -version)"
+        # xcode build xcode version: Xcode 26.2
+        # Build version 17C52
+
+        echo "Applications path recursivo: $(ls -l /Applications/Xcode_${{ inputs.xcode-version }}.app/Contents/Developer/Platforms/)"
+        #iPhoneOS.platform/Developer/SDKs/)"
+        # nada!!!
+
+    # información simulador
+    - name: XCODE. Verificar las versiones de los simuladores nativos.
+      # deberia imprimir la lista de simuladores o runtime disponibles
+      run: |
+        xcrun simctl list runtimes
+        # iOS 18.4 (18.4 - 22E238) - com.apple.CoreSimulator.SimRuntime.iOS-18-4
+        # ...
+        # visionOS 26.1 (26.1 - 23N47) - com.apple.CoreSimulator.SimRuntime.xrOS-26-1
+
+    - name: XCODE. descarga el simulador requerido
+      run: |
+        sudo xcodebuild -downloadPlatform iOS
+
+        # Downloading iOS 26.2 Simulator (23C54) (arm64): 
+        # Downloading iOS 26.2 Simulator (23C54) (arm64): Preparing to download...
+        # Downloading iOS 26.2 Simulator (23C54) (arm64): Preparing to download...
+        # Downloading iOS 18.0 Simulator (22A3351): 57.2% (4.8 GB of 8.39 GB)
+        # Downloading iOS 26.2 Simulator (23C54) (arm64): 99.5% (8.35 GB of 8.39 GB)
+        # Downloading iOS 26.2 Simulator (23C54) (arm64): Installing...  
+        # Downloading iOS 26.2 Simulator (23C54) (arm64): Done. 
+        # iOS 26.2 (23C54) - B651BB0B-13EF-4A1E-B316-812ABEF225C6
+
+        echo "Espacio actual: $(df -Th )"
+        
+    - name: XCODE. Verificando simulador instalado
+      run: |
+        # debería aparecer el instalado
+        echo "run times instalados: $(xcrun simctl list runtimes)"
+        # iOS 18.4 (18.4 - 22E238) - com.apple.CoreSimulator.SimRuntime.iOS-18-4
+        # ...
+        # iOS 26.2 (26.2 - 23C54) - com.apple.CoreSimulator.SimRuntime.iOS-26-2
+        # ...
+        # visionOS 26.1 (26.1 - 23N47) - com.apple.CoreSimulator.SimRuntime.xrOS-26-1
+
+        echo "simuladores disponibles: $(xcrun simctl list devices)"
+        # -- iOS 18.4 --
+        # iPhone 16 Pro (D4FBFE4D-4C70-4251-8C43-69A99C8B5301) (Shutdown) 
+        # iPhone 16 Pro Max (B49FF078-A077-4F15-B3AF-C41D6A8571DF) (Shutdown) 
+        # -- iOS 18.5 --
+        # iPhone 16 Pro (74ACB01D-B42C-44FA-AAB2-EFFBD0269B85) (Shutdown) 
+        # iPhone 16 Pro Max (DF9E69CE-D47B-4675-A6EE-9756E74A89E2) (Shutdown) 
+        # -- iOS 18.6 --
+        # iPhone 16 Pro (3EB49A4F-CC22-439E-988A-06A28A5A166A) (Shutdown) 
+        # iPhone 16 Pro Max (8A823BD7-E433-46BA-B9AA-A4B6EA11681C) (Shutdown) 
+        # -- iOS 26.0 --
+        # iPhone 17 Pro (316A36E7-2496-45A3-8CE8-E2E0A66249B3) (Shutdown) 
+        # iPhone 17 Pro Max (05E4E9DD-BC72-43A4-B9B8-5A095B7E5CFB) (Shutdown) 
+        # -- iOS 26.1 --
+        # iPhone 17 Pro (AA6F273E-8795-44DE-8671-20449A96ED8A) (Shutdown) 
+        # iPhone 17 Pro Max (977D924F-FDDF-464F-9888-428AC64CB114) (Shutdown) 
+
+        # aquí se busca en el build el actool y el path del sdk
+        echo "Path sdk runtime: $(xcrun --sdk iphoneos --show-sdk-path)"        
+        # Path sdk runtime: /Applications/Xcode_26.2.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk
+        
+        echo "Buscando actool: $(xcrun -sdk iphonesimulator -find actool)"        
+        # Buscando actool: /Applications/Xcode_26.2.app/Contents/Developer/usr/bin/actool
+                
+        echo "Test para iPhone 16 Pro: "
+        xcrun simctl boot "${{ inputs.device-simulator }}"
+               
+        echo "carpeta que luego el sdk en el build busca el actool "
+        ls /Applications/Xcode_${{inputs.xcode-version-short}}.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/
+        # iPhoneOS.sdk
+        # iPhoneOS26.0.sdk
+
+    # NETCORE CUSTOM. limpieza e instalación
+
+    - name: .NETCORE. Elimina las versiones de net que no se usan
+      run: |
+        #rm -rf /Users/runner/.dotnet/*
+        sudo rm -rf /Users/runner/.dotnet
+        
+    - name: .NETCORE. Descarga e instalación de netcore
+      run: |  
+        mkdir -p ~/.dotnet
+    
+        echo "Descargar e instalar con el script oficial"
+        curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
+        chmod ugo+x dotnet-install.sh
+
+        echo "Ejecutando Script de Instalación dotnet"
+        ./dotnet-install.sh --version ${{ env.DOTNET_VERSION }} --install-dir $HOME/.dotnet
+        rm dotnet-install.sh
+        echo "Fin script de instalación dotnet"
+        
+        sudo chown -R $(whoami):staff ~/.dotnet
+
+        echo "$HOME/.dotnet" >> $GITHUB_PATH
+        export PATH="$HOME/.dotnet:$PATH"
+    
+        echo "Instalación dotnet which: $(which dotnet)"
+        # Instalación dotnet which: /Users/runner/.dotnet/dotnet
+
+        echo "Instalación dotnet version: $(dotnet --version)"
+        # Instalación dotnet version: 10.0.101
+        #  Version:           10.0.101
+        #  Commit:            fad253f51b
+        #  Workload version:  10.0.100-manifests.c57ac48b
+        #  MSBuild version:   18.0.6+fad253f51
+        # Runtime Environment:
+        #  OS Name:     Mac OS X
+        #  OS Version:  15.7
+        #  OS Platform: Darwin
+        #  RID:         osx-arm64
+        # Base Path:   /Users/runner/.dotnet/sdk/10.0.101/
+
+        echo "Instalación dotnet info: $(dotnet --info)"
+        # Instalación dotnet info: .NET SDK:
+
+        dotnet --version || { echo "ERROR: .NET no se instaló correctamente"; exit 1; }
+
+        #DOTNET_ROOT                              [/Users/runner/.dotnet]
+        echo "dotnet root: $(ls -l /Users/runner/.dotnet)"
+        # -rwxr-xr-x  1 runner  staff  141392 Jan  4 03:32 dotnet
+        # drwxr-xr-x  5 runner  staff     160 Jan  4 03:32 packs
+        # drwxr-xr-x  3 runner  staff      96 Jan  4 03:32 sdk
+        
+     # NETCORE - información e instalación 
+        
+    - name: .NETCORE. Verificar versiones (todas las disponibles y rutas, con eso se si borrar la default)
+      run: |
+        echo "dotnet version: $(dotnet --version)"
+        # dotnet version: 10.0.101
+
+        # observar donde esta la ruta del dotnet y el sdks
+        echo "sdks dotnet version: $(dotnet --list-sdks)"
+        # 9.0.308 [/Users/runner/.dotnet/sdk]
+        # 10.0.101 [/Users/runner/.dotnet/sdk]
+        # o
+        # sdks dotnet version: 10.0.101 [/usr/local/share/dotnet/sdk]
+
+        # observar la ruta donde esta instalado dotnet
+        echo "Runtimes dotnet version: $(dotnet --list-runtimes)"
+        # Microsoft.AspNetCore.App 9.0.11 [/Users/runner/.dotnet/shared/Microsoft.AspNetCore.App]
+        # Microsoft.AspNetCore.App 10.0.1 [/Users/runner/.dotnet/shared/Microsoft.AspNetCore.App]
+        # Runtimes dotnet version: Microsoft.AspNetCore.App 10.0.1 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]
+        # Microsoft.NETCore.App 10.0.1 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]
+
+        echo "Sdks disponibles: $(ls /Users/runner/.dotnet/sdk)"
+        # echo "Sdks disponibles: $(ls /usr/local/share/dotnet/sdk)"        
+        # Microsoft.NETCore.App 9.0.11 [/Users/runner/.dotnet/shared/Microsoft.NETCore.App]
+        # Microsoft.NETCore.App 10.0.1 [/Users/runner/.dotnet/shared/Microsoft.NETCore.App]
+       
+    # WORKLOADS: información e instalación (revisar que este en la version de net objetivo)
+    
+    - name: WORKLOADS. Verificar disponibles (para saber que simulador elegir )
+      run: |
+        
+        # porque no suele haber workloads para todos los runtime del simulador disponibles
+        # con esto sabria que workloads elegir para instalar luego
+        # tambien me dice si esta en el net objetivo
+        
+        echo "Imprime todo lo que tiene: $(dotnet workload search)"
+        # ios                             .NET SDK Workload for building iOS applications.
+        
+        #  Welcome to .NET 10.0!
+        # ---------------------
+        # SDK Version: 10.0.101
+        #...
+        # ios                             .NET SDK Workload for building iOS applications.     
+        # maui                            .NET MAUI SDK for all platforms           
+        # maui-ios                        .NET MAUI SDK for iOS 
+        # maui-mobile                     .NET MAUI SDK for Mobile   
+
+        echo "Imprime los workloads que tenga instalados: $(dotnet workload list)"
+        # Workload version: 10.0.100-manifests.c57ac48b
+        # vacio - no hay workloads
+
+    - name: WORKLOADS. Instalar versiones específicas
+      run: |
+        # dotnet workload install ios maui maui-ios --skip-sign-check
+        dotnet workload install ios maui maui-ios --version ${{ inputs.dotnet-version-workload }}
+      env:
+        DOTNET_NOLOGO: true
+        DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+        # MD_APPLE_SDK_ROOT: /Applications/Xcode_26.2.app
+        # DOTNET_WORKLOAD_INSTALL_ADDITIONAL_ARGS: --ios-simulator-runtime=26.2
+
+    - name: WORKLOADS. Verifica instalados
+      run: |
+        dotnet workload list --verbosity detailed
+               
+    - name: PRE-BUILD. Version del bundle y version del app
+      run: |
+        PLIST_PATH=${{ github.workspace }}/${{ inputs.project-folder }}/Platforms/iOS/Info.plist
+                
+        BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" $PLIST_PATH)
+        echo "Versión visible para los usuarios - la que hay que tocar para subir:"$BUNDLE_VERSION
+        # Versión visible para los usuarios - la que hay que tocar para subir:7.1
+
+        SHORT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" $PLIST_PATH)
+        echo "Versionado de compilacion, el sistema operativo verifica esta:"$SHORT_VERSION
+        # Versionado de compilacion, el sistema operativo verifica esta:2.1
+
+        APP_VERSION_BUILD="${SHORT_VERSION}_${BUNDLE_VERSION}"
+        echo "APP_VERSION_BUILD=$APP_VERSION_BUILD" >> $GITHUB_ENV
+
+    - name: PRE-BUILD. Validar manifests iOS
+      run: |
+        echo "Validando plists"
+        plutil -lint ${{ github.workspace }}/${{ inputs.project-folder }}/Platforms/iOS/Info.plist || { echo "ERROR: Info.plist inválido"; exit 1; }
+        #plutil -lint ${{ github.workspace }}/${{ inputs.project-folder }}/Platforms/iOS/Entitlements.Development.plist || { echo "ERROR: Entitlements.Development.plist inválido"; exit 1; }
+        #plutil -lint ${{ github.workspace }}/${{ inputs.project-folder }}/Platforms/iOS/Entitlements.Release.plist || { echo "ERROR: Entitlements.Release.plist inválido"; exit 1; }
+        echo "Todos los plists válidos"
+
+    # build para el simulador
+
+    - name: BUILD SIMULADOR. Limpiar proyecto
+      run: |
+        dotnet clean ${{ env.PROJECT_FILE }} -f ${{ env.DOTNET_TARGET_VERSION }}-ios
+
+    - name: BUILD SIMULADOR. Restaurar dependencias
+      run: |
+        dotnet restore  ${{ env.PROJECT_FILE }} \
+          -p:TargetFramework=${{ env.DOTNET_TARGET_VERSION }}-ios \
+          -p:RuntimeIdentifier=${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}
+          
+    - name: BUILD SIMULADOR. Construye para el simulador iOS
+      env:
+        MD_APPLE_SDK_ROOT: /Applications/Xcode_${{ inputs.xcode-version-short }}.app
+        XCODE_DEVELOPER_DIR_PATH: /Applications/Xcode_${{ inputs.xcode-version-short  }}.app/Contents/Developer   
+      run: |
+        echo "Proyecto: ${{ env.PROJECT_FILE }}"
+
+        echo "Build: ${{ inputs.build-config }}"
+        # Build: Release
+
+        echo "Target framework: ${{ env.DOTNET_TARGET_VERSION }}-ios"
+        # Target framework: net9.0-ios
+
+        dotnet build ${{ env.PROJECT_FILE }} \
+            -c ${{ env.DOTNET_TARGET_VERSION }} \
+            -f:${{ env.DOTNET_TARGET_VERSION }}-ios \
+            -p:RuntimeIdentifier=${{ env.RUNTIME_IDENTIFIER_SIMULATOR }} \
+            -p:CodesignEntitlements=Platforms/iOS/Entitlements.Development.plist \
+            -p:EnableCodeSigning=false \
+            -p:CodesignProvision="" \
+            -p:CodesignKey="-" \
+            -v normal
+
+        echo "Imprime la carpeta bin recursiva (fin):"
+        ls -Rl ${{ github.workspace }}/${{ env.PROJECT_FILE }}/bin/
+        # drwxr-xr-x  3 runner  staff  96 Jan  8 01:30 Debug
+        echo "fin"
+        
+        BASE_PATH=${{ github.workspace }}/${{ env.PROJECT_FILE }}/bin/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}/${{ env.DOTNET_TARGET_VERSION }}-ios/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}
+        APP_PATH=${BASE_PATH}/${{ env.PROJECT_FOLDER }}.app
+
+        echo "BASE_PATH: $BASE_PATH"      
+        echo "APP_PATH: $APP_PATH"
+
+        echo "BASE_PATH=$BASE_PATH" >> $GITHUB_ENV
+        echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
+
+    - name: BUILD SIMULADOR. Firma robusta
+      if: inputs.generar-app
+      run: |        
+        APP_PATH_NAME="${{ env.PROJECT_FOLDER }}.app"
+        ENTITLEMENTS_PATH="${{ github.workspace }}/${{ env.PROJECT_FOLDER }}/Platforms/iOS/Entitlements.Development.plist"
+
+        echo "PATH BASE: $(ls -lsh $BASE_PATH)"
+
+        cd $BASE_PATH
+        PAYLOAD_APP="${{ env.BASE_PATH }}"
+
+        echo "Limpiando atributos extendidos..."
+        xattr -cr "$PAYLOAD_APP"
+
+        echo "Firmando componentes internos con certificado real..."
+        find "$PAYLOAD_APP" -name "*.dll" -or -name "*.dylib" -or -name "*.framework" -or -name "*.aotdata*" | while read item; do
+            codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp "$item"
+        done
+       
+        echo "Firmando el binario principal..."
+        codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp --entitlements "$ENTITLEMENTS_PATH" "$PAYLOAD_APP/$APP_PATH_NAME"
+
+        echo "Sellado final del Bundle (CON Entitlements)..."
+        codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp --entitlements "$ENTITLEMENTS_PATH" --generate-entitlement-der "$PAYLOAD_APP"
+
+        echo "Verificación de Entitlements inyectados:"
+        codesign -d --entitlements :- "$PAYLOAD_APP/$APP_PATH_NAME"
+      
+        echo "Dirá si el sellado final realmente capturó el permiso de Push"
+        codesign -d --entitlements :- "$PAYLOAD_APP/$APP_PATH_NAME" | grep "aps-environment"
+      
+        echo "Verificando identidad"
+        codesign -vv -d "${{ env.APP_PATH }}"
+        
+        cd "${{ github.workspace }}/${{ env.PROJECT_FOLDER }}"
+        
+    - name: BUILD SIMULADOR. Test entitlements
+      run: |
+        /usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "${{ env.APP_PATH }}/Info.plist"
+
+        codesign -d --entitlements :- "${{ env.APP_PATH }}/${{ env.PROJECT_FOLDER }}"
+        
+    - name: BUILD RELEASE SIMULADOR. Determina path de la carpeta .app para la simulacion
+      run: |  
+        echo "BASE_PATH: $BASE_PATH"
+
+        echo "APP_PATH: $APP_PATH"
+
+        ZIP_NAME="${{ inputs.version-fecha }}_${ APP_VERSION_BUILD }_${{ env.PACKAGE_NAME }}.app.zip"
+        echo "ZIP NAME: $ZIP_NAME"
+
+        cd "$BASE_PATH"
+        zip -ry "$ZIP_NAME" "${{ env.PROJECT_FOLDER }}.app"
+                
+        echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+        echo "ZIP_PATH=${BASE_PATH}/${ZIP_NAME}" >> $GITHUB_ENV    
+        
+    - name: RELEASE SIMULADOR. Subir appName.app.zip como artefacto
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ZIP_NAME }}
+        path: |          
+          ${{ env.ZIP_PATH}}
+        retention-days: 1
+
+    - name: Install ffmpeg
+      run: |    
+        brew install ffmpeg  
+    
+    - name: RELEASE SIMULADOR. GRABAR VIDEO Y CREAR GIF
+      continue-on-error: true
+      timeout-minutes: 15
+      run: |
+        echo "Esperando algo como (Signature=adhoc): "
+        codesign -vvv --display "${APP_PATH}"
+        cd "${{ github.workspace }}"
+        chmod ugo+rwx ./Utilities/simular.sh
+        ./Utilities/simular.sh
+
+    - name: RELEASE SIMULADOR. Subir GIF de evidencia  
+      uses: actions/upload-artifact@v4
+      with:
+        name: grabacion-simulador
+        path: | 
+          evidencia_app.gif
+          frames/
+          debug_logs/
+          debug_logs/launch_output.txt
+          app_stream_full.txt
+          /tmp/app_stderr.txt
+        if-no-files-found: warn
+        retention-days: 1
+
+    - name: Clean up keychain and provisioning profile
+      if: ${{ always() }}
+      run: |
+        echo "Limpieza de keychain y perfiles de aprovisionamiento"
