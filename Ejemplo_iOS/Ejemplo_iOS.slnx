@@ -1,6 +1,6 @@
 <Solution>
   <Folder Name="/github.workflow/">
-    <File Path="../github.workflow/cd-iOS-main.yml" />
+    <File Path="../.github/workflow/cd-iOS-main.yml" />
   </Folder>
   <Folder Name="/Utilities/">
     <File Path="../Utilities/simular.sh" />
