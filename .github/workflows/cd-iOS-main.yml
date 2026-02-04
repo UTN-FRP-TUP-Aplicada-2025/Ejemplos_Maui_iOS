@@ -61,8 +61,8 @@ jobs:
         echo "Cores numbers: $(sysctl -n hw.ncpu)"
         # Cores numbers: 3
 
+    # clona del repositorio
     - name: Checkout the code
-      comments: "clona del repositorio"
       uses: actions/checkout@v4
       with:
         path: ./
