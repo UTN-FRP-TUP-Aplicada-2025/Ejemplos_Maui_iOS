@@ -27,6 +27,7 @@ env:
   DOTNET_VERSION_WORKLOAD: '10.0.102'
 
   PACKAGE_NAME: 'com.ejemplos.ios'
+  SOLUTION_FOLDER: 'Ejemplo_iOS'
   PROJECT_FOLDER: 'Ejemplo_iOS'
   PROJECT_FILE: './Ejemplo_iOS/Ejemplo_iOS.csproj'
   VERSION_FECHA: '20260202'
@@ -342,18 +343,18 @@ jobs:
     - name: WORKLOADS. Verifica instalados
       run: |
         dotnet workload list --verbosity detailed
-               
+         
+    - name: path project  
+      run: |
+        PROJECT_PATH=${{ github.workspace }}/${{ env.SOLUTION_FOLDER }}/${{ env.PROJECT_FOLDER }}
+        echo "PROJECT_PATH=$PROJECT_PATH" >> $GITHUB_ENV
+        echo "Recursive path: $(ls -lshR $PLIST_PATH)"
+
     - name: PRE-BUILD. Versionado del bundle desde la version del app
       run: |  
         #PLIST_PATH=/Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
-        PLIST_PATH=${{ github.workspace }}/${{ env.PROJECT_FOLDER }}/Platforms/iOS/Info.plist
-
-        echo "prueba 1: $(ls /Users/runner/work/Ejemplos_Maui_iOS)"
-        echo "prueba 2: $(ls /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS)"
-        echo "prueba 3: $(ls /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS)"
-        echo "prueba 4: $(ls /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist)"
-        cat /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
-        
+        PLIST_PATH=${{ env.PROJECT_PATH }}/Platforms/iOS/Info.plist
+                
         BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" $PLIST_PATH)
         echo "Versión visible para los usuarios - la que hay que tocar para subir:"$BUNDLE_VERSION
 
@@ -366,17 +367,20 @@ jobs:
     - name: PRE-BUILD. Validar manifests iOS
       run: |
         echo "Validando plists"
-        plutil -lint ${{ github.workspace }}/${{ env.PROJECT_FOLDER }}/Platforms/iOS/Info.plist || { echo "ERROR: Info.plist inválido"; exit 1; }      
+        plutil -lint "${{ env.PROJECT_PATH }}/Platforms/iOS/Info.plist" || { echo "ERROR: Info.plist inválido"; exit 1; }      
         echo "Todos los plists válidos"
-
+        
     # build para el simulador
 
     - name: BUILD SIMULADOR. Limpiar proyecto
       run: |
+        cd ${{ env.PROJECT_PATH }}
         dotnet clean ${{ env.PROJECT_FILE }} -f ${{ env.DOTNET_TARGET_VERSION }}-ios
 
     - name: BUILD SIMULADOR. Restaurar dependencias
       run: |
+        cd ${{ env.PROJECT_PATH }}
+
         dotnet restore  ${{ env.PROJECT_FILE }} \
           -p:TargetFramework=${{ env.DOTNET_TARGET_VERSION }}-ios \
           -p:RuntimeIdentifier=${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}
@@ -386,6 +390,8 @@ jobs:
         MD_APPLE_SDK_ROOT: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT }}.app
         XCODE_DEVELOPER_DIR_PATH: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT  }}.app/Contents/Developer   
       run: |
+        cd ${{ env.PROJECT_PATH }}
+
         echo "Proyecto: ${{ env.PROJECT_FILE }}"
 
         echo "Build: ${{ env.BUILD_CONFIG_SIMULATOR }}"
@@ -409,7 +415,7 @@ jobs:
         # drwxr-xr-x  3 runner  staff  96 Jan  8 01:30 Debug
         echo "fin"
         
-        BASE_PATH=${{ github.workspace }}/${{ env.PROJECT_FILE }}/bin/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}/${{ env.DOTNET_TARGET_VERSION }}-ios/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}
+        BASE_PATH=${{ env.PROJECT_PATH }}/bin/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}/${{ env.DOTNET_TARGET_VERSION }}-ios/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}
         APP_PATH=${BASE_PATH}/${{ env.PROJECT_FOLDER }}.app
 
         echo "BASE_PATH: $BASE_PATH"      
@@ -421,7 +427,7 @@ jobs:
     - name: BUILD SIMULADOR. Firma robusta
       run: |        
         APP_PATH_NAME="${{ env.PROJECT_FOLDER }}.app"
-        ENTITLEMENTS_PATH="${{ github.workspace }}/${{ env.PROJECT_FOLDER }}/Platforms/iOS/Entitlements.Development.plist"
+        ENTITLEMENTS_PATH="${{ env.PROJECT_PATH }}/Platforms/iOS/Entitlements.Development.plist"
 
         echo "PATH BASE: $(ls -lsh $BASE_PATH)"
 
