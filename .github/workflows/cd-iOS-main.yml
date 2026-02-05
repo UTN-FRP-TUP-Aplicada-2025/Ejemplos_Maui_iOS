@@ -29,6 +29,8 @@ env:
   PACKAGE_NAME: 'com.ejemplos.ios'
   PROJECT_FOLDER: 'Ejemplo_iOS'
   PROJECT_FILE: './Ejemplo_iOS/Ejemplo_iOS.csproj'
+  VERSION_FECHA: '20260202'
+
   RUNTIME_IDENTIFIER_SIMULATOR: 'iossimulator-arm64' 
   BUILD_CONFIG_SIMULATOR: 'Release'
   DEVICE_SIMULATOR: 'iPhone 17 Pro Max'
@@ -140,7 +142,7 @@ jobs:
         # drwxr-xr-x   3 runner  staff   96 Dec  5 09:21 Xcode_26.2.app
         # lrwxr-xr-x   1 root    admin   28 Jan  3 17:20 Xcode.app -> /Applications/Xcode_26.2.app
         
-        echo "Applications path recursivo: $(ls -l /Applications/Xcode_${{ inputs.xcode-version }}.app)"
+        echo "Applications path recursivo: $(ls -l /Applications/Xcode_${{ env.XCODE_VERSION }}.app)"
 
         echo "Ruta actual XCode: $(xcode-select -p)"
         # Ruta actual XCode: /Applications/Xcode_26.2.app/Contents/Developer
@@ -154,7 +156,7 @@ jobs:
         # xcode build xcode version: Xcode 26.2
         # Build version 17C52
 
-        echo "Applications path recursivo: $(ls -l /Applications/Xcode_${{ inputs.xcode-version }}.app/Contents/Developer/Platforms/)"
+        echo "Applications path recursivo: $(ls -l /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer/Platforms/)"
         #iPhoneOS.platform/Developer/SDKs/)"
         # nada!!!
 
@@ -216,11 +218,11 @@ jobs:
         echo "Buscando actool: $(xcrun -sdk iphonesimulator -find actool)"        
         # Buscando actool: /Applications/Xcode_26.2.app/Contents/Developer/usr/bin/actool
                 
-        echo "Test para iPhone 16 Pro: "
-        xcrun simctl boot "${{ inputs.device-simulator }}"
+        echo "Test para ${{ env.DEVICE_SIMULATOR }}: "
+        xcrun simctl boot "${{ env.DEVICE_SIMULATOR }}"
                
         echo "carpeta que luego el sdk en el build busca el actool "
-        ls /Applications/Xcode_${{inputs.xcode-version-short}}.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/
+        ls /Applications/Xcode_${{ env.XCODE_VERSION_SHORT }}.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/
         # iPhoneOS.sdk
         # iPhoneOS26.0.sdk
 
@@ -330,7 +332,7 @@ jobs:
     - name: WORKLOADS. Instalar versiones específicas
       run: |
         # dotnet workload install ios maui maui-ios --skip-sign-check
-        dotnet workload install ios maui maui-ios --version ${{ inputs.dotnet-version-workload }}
+        dotnet workload install ios maui maui-ios --version ${{ env.DOTNET_VERSION_WORKLOAD }}
       env:
         DOTNET_NOLOGO: true
         DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -343,7 +345,7 @@ jobs:
                
     - name: PRE-BUILD. Version del bundle y version del app
       run: |
-        PLIST_PATH=${{ github.workspace }}/${{ inputs.project-folder }}/Platforms/iOS/Info.plist
+        PLIST_PATH=${{ github.workspace }}/${{ env.PROJECT_FOLDER }}/Platforms/iOS/Info.plist
                 
         BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" $PLIST_PATH)
         echo "Versión visible para los usuarios - la que hay que tocar para subir:"$BUNDLE_VERSION
@@ -359,9 +361,7 @@ jobs:
     - name: PRE-BUILD. Validar manifests iOS
       run: |
         echo "Validando plists"
-        plutil -lint ${{ github.workspace }}/${{ inputs.project-folder }}/Platforms/iOS/Info.plist || { echo "ERROR: Info.plist inválido"; exit 1; }
-        #plutil -lint ${{ github.workspace }}/${{ inputs.project-folder }}/Platforms/iOS/Entitlements.Development.plist || { echo "ERROR: Entitlements.Development.plist inválido"; exit 1; }
-        #plutil -lint ${{ github.workspace }}/${{ inputs.project-folder }}/Platforms/iOS/Entitlements.Release.plist || { echo "ERROR: Entitlements.Release.plist inválido"; exit 1; }
+        plutil -lint ${{ github.workspace }}/${{ env.PROJECT_FOLDER }}/Platforms/iOS/Info.plist || { echo "ERROR: Info.plist inválido"; exit 1; }      
         echo "Todos los plists válidos"
 
     # build para el simulador
@@ -378,12 +378,12 @@ jobs:
           
     - name: BUILD SIMULADOR. Construye para el simulador iOS
       env:
-        MD_APPLE_SDK_ROOT: /Applications/Xcode_${{ inputs.xcode-version-short }}.app
-        XCODE_DEVELOPER_DIR_PATH: /Applications/Xcode_${{ inputs.xcode-version-short  }}.app/Contents/Developer   
+        MD_APPLE_SDK_ROOT: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT }}.app
+        XCODE_DEVELOPER_DIR_PATH: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT  }}.app/Contents/Developer   
       run: |
         echo "Proyecto: ${{ env.PROJECT_FILE }}"
 
-        echo "Build: ${{ inputs.build-config }}"
+        echo "Build: ${{ env.BUILD_CONFIG_SIMULATOR }}"
         # Build: Release
 
         echo "Target framework: ${{ env.DOTNET_TARGET_VERSION }}-ios"
@@ -414,7 +414,6 @@ jobs:
         echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
 
     - name: BUILD SIMULADOR. Firma robusta
-      if: inputs.generar-app
       run: |        
         APP_PATH_NAME="${{ env.PROJECT_FOLDER }}.app"
         ENTITLEMENTS_PATH="${{ github.workspace }}/${{ env.PROJECT_FOLDER }}/Platforms/iOS/Entitlements.Development.plist"
@@ -461,7 +460,7 @@ jobs:
 
         echo "APP_PATH: $APP_PATH"
 
-        ZIP_NAME="${{ inputs.version-fecha }}_${ APP_VERSION_BUILD }_${{ env.PACKAGE_NAME }}.app.zip"
+        ZIP_NAME="${{ env.VERSION_FECHA }}_${ APP_VERSION_BUILD }_${{ env.PACKAGE_NAME }}.app.zip"
         echo "ZIP NAME: $ZIP_NAME"
 
         cd "$BASE_PATH"
