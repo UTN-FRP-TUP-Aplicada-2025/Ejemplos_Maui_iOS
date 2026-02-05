@@ -98,7 +98,7 @@ jobs:
         xip --expand ${{ env.XCODE_FILE_INSTALLER }}      
         test -d Xcode.app && echo "Xcode expandido OK"
 
-        rm -f $FILENAME
+        rm -f ${{ env.XCODE_FILE_INSTALLER }}
 
         echo "Listando directorios: $(ls -lh)"
 
