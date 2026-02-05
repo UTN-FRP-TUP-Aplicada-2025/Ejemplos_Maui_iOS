@@ -1,4 +1,4 @@
-﻿namespace Ejemplo_iOS.Pages;
+﻿namespace Ejemplo_iOS;
 
 public partial class AppShell : Shell
 {
