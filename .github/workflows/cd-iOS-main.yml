@@ -343,18 +343,23 @@ jobs:
       run: |
         dotnet workload list --verbosity detailed
                
-    - name: PRE-BUILD. Version del bundle y version del app
-      run: |
+    - name: PRE-BUILD. Versionado del bundle desde la version del app
+      run: |  
+        #PLIST_PATH=/Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
         PLIST_PATH=${{ github.workspace }}/${{ env.PROJECT_FOLDER }}/Platforms/iOS/Info.plist
-                
+
+        echo "prueba 1: $(ls /Users/runner/work/Ejemplos_Maui_iOS)"
+        echo "prueba 2: $(ls /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS)"
+        echo "prueba 3: $(ls /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS)"
+        echo "prueba 4: $(ls /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist)"
+        cat /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
+        
         BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" $PLIST_PATH)
         echo "Versión visible para los usuarios - la que hay que tocar para subir:"$BUNDLE_VERSION
-        # Versión visible para los usuarios - la que hay que tocar para subir:7.1
 
         SHORT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" $PLIST_PATH)
         echo "Versionado de compilacion, el sistema operativo verifica esta:"$SHORT_VERSION
-        # Versionado de compilacion, el sistema operativo verifica esta:2.1
-
+        
         APP_VERSION_BUILD="${SHORT_VERSION}_${BUNDLE_VERSION}"
         echo "APP_VERSION_BUILD=$APP_VERSION_BUILD" >> $GITHUB_ENV
 
