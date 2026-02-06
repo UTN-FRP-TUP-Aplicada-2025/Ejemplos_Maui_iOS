@@ -439,13 +439,13 @@ jobs:
         #                    /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/iOS/Entitlements.Development.plist
         #                   /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
 
-        PROJECT_PATH=${{ github.workspace }}/${{ env.SOLUTION_FOLDER }}/${{ env.PROJECT_FOLDER }}
         SOLUTION_PATH=${{ github.workspace }}/${{ env.SOLUTION_FOLDER }}
-        
+        PROJECT_PATH=$SOLUTION_PATH/${{ env.PROJECT_FOLDER }}
+                
         echo "PROJECT_PATH=$PROJECT_PATH" >> $GITHUB_ENV
         echo "SOLUTION_PATH=$SOLUTION_PATH" >> $GITHUB_ENV
 
-        echo "Recursive path: $(ls -lshR $PLIST_PATH)"
+        echo "Recursive path: $(ls -lshR $SOLUTION_PATH)"
 
     - name: PRE-BUILD. Versionado del bundle desde la version del app
       run: |  
@@ -501,7 +501,7 @@ jobs:
         # Target framework: net9.0-ios
 
         dotnet build ${{ env.PROJECT_FILE }} \
-            -c ${{ env.DOTNET_TARGET_VERSION }} \
+            -c ${{ env.BUILD_CONFIG_SIMULATOR }} \
             -f:${{ env.DOTNET_TARGET_VERSION }}-ios \
             -p:RuntimeIdentifier=${{ env.RUNTIME_IDENTIFIER_SIMULATOR }} \
             -p:CodesignEntitlements=Platforms/iOS/Entitlements.Development.plist \
@@ -511,11 +511,11 @@ jobs:
             -v normal
 
         echo "Imprime la carpeta bin recursiva (fin):"
-        ls -Rl ${{ github.workspace }}/${{ env.PROJECT_FILE }}/bin/
+        ls -Rl ${{ env.PROJECT_PATH }}/bin/
         # drwxr-xr-x  3 runner  staff  96 Jan  8 01:30 Debug
         echo "fin"
         
-        BASE_PATH=${{ env.PROJECT_PATH }}/bin/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}/${{ env.DOTNET_TARGET_VERSION }}-ios/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}
+        BASE_PATH=${{ env.PROJECT_PATH }}/bin/${{ env.BUILD_CONFIG_SIMULATOR }}/${{ env.DOTNET_TARGET_VERSION }}-ios/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}
         APP_PATH=${BASE_PATH}/${{ env.PROJECT_FOLDER }}.app
 
         echo "BASE_PATH: $BASE_PATH"      
@@ -556,9 +556,7 @@ jobs:
       
         echo "Verificando identidad"
         codesign -vv -d "${{ env.APP_PATH }}"
-        
-        cd "${{ github.workspace }}/${{ env.PROJECT_FOLDER }}"
-        
+                
     - name: BUILD SIMULADOR. Test entitlements
       run: |
         /usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "${{ env.APP_PATH }}/Info.plist"
