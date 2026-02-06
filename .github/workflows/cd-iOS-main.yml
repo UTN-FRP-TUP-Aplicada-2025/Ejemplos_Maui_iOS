@@ -45,11 +45,6 @@ jobs:
     name: iOS Publish
 
     steps:
-    - name: Checkout the code
-      uses: actions/checkout@v4
-      with:
-        path: ./
-
     - name: Verificar arquitectura del runner (la mv) 
       run: |
         echo "Arquitectura: $(uname -m)"
@@ -75,6 +70,100 @@ jobs:
         echo "Current workspace: ${{ github.workspace }}"
 
         ls -R ${{ github.workspace }}
+
+        # Current workspace: /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS
+        # Ejemplo_iOS
+        # ....
+        # Utilities
+
+        #/Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS:
+        #Ejemplo_iOS
+        #Ejemplo_iOS.slnx
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS:
+        # App.xaml
+        # App.xaml.cs
+        # AppShell.xaml
+        # AppShell.xaml.cs
+        # Ejemplo_iOS.csproj
+        # MauiProgram.cs
+        # Pages
+        # Platforms
+        # Properties
+        # Resources
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Pages:
+        # MainPage.xaml
+        # MainPage.xaml.cs
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms:
+        # Android
+        # iOS
+        # Windows
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/Android:
+        # AndroidManifest.xml
+        # MainActivity.cs
+        # MainApplication.cs
+        # Resources
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/Android/Resources:
+        # values
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/Android/Resources/values:
+        # colors.xml
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/iOS:
+        # AppDelegate.cs
+        # Entitlements.Development.plist
+        # Info.plist
+        # Program.cs
+        # Resources        
+        
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/iOS/Resources:
+        # PrivacyInfo.xcprivacy
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/Windows:
+        # app.manifest
+        # App.xaml
+        # App.xaml.cs
+        # Package.appxmanifest
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Properties:
+        # launchSettings.json
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Resources:
+        # AppIcon
+        # Fonts
+        # Images
+        # Raw
+        # Splash
+        # Styles
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Resources/AppIcon:
+        # appicon.svg
+        # appiconfg.svg
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Resources/Fonts:
+        # OpenSans-Regular.ttf
+        # OpenSans-Semibold.ttf
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Resources/Images:
+        # dotnet_bot.png
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Resources/Raw:
+        # AboutAssets.txt
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Resources/Splash:
+        # splash.svg
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Resources/Styles:
+        # Colors.xaml
+        # Styles.xaml
+
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Utilities:
+        # simular.sh
         
     - name: "instalando utilidades para descarga desde google drive gdown"
       run: |
@@ -344,15 +433,23 @@ jobs:
       run: |
         dotnet workload list --verbosity detailed
          
-    - name: path project  
+    - name: PATH PROJECT AND SOLUTION.
       run: |
+        # Current workspace: /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS
+        #                    /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/iOS/Entitlements.Development.plist
+        #                   /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
+
         PROJECT_PATH=${{ github.workspace }}/${{ env.SOLUTION_FOLDER }}/${{ env.PROJECT_FOLDER }}
+        SOLUTION_PATH=${{ github.workspace }}/${{ env.SOLUTION_FOLDER }}
+        
         echo "PROJECT_PATH=$PROJECT_PATH" >> $GITHUB_ENV
+        echo "SOLUTION_PATH=$SOLUTION_PATH" >> $GITHUB_ENV
+
         echo "Recursive path: $(ls -lshR $PLIST_PATH)"
 
     - name: PRE-BUILD. Versionado del bundle desde la version del app
       run: |  
-        #PLIST_PATH=/Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
+        #PLIST_PATH=/Users/runner/work/Ejemplos_Maui_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
         PLIST_PATH=${{ env.PROJECT_PATH }}/Platforms/iOS/Info.plist
                 
         BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" $PLIST_PATH)
@@ -374,12 +471,15 @@ jobs:
 
     - name: BUILD SIMULADOR. Limpiar proyecto
       run: |
-        cd ${{ env.PROJECT_PATH }}
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/iOS/Entitlements.Development.plist
+        # /Users/runner/work/Ejemplos_Maui_iOS/Ejemplos_Maui_iOS/Ejemplo_iOS/Ejemplo_iOS/Platforms/iOS/Info.plist
+        cd ${{ env.SOLUTION_PATH }}
         dotnet clean ${{ env.PROJECT_FILE }} -f ${{ env.DOTNET_TARGET_VERSION }}-ios
 
     - name: BUILD SIMULADOR. Restaurar dependencias
       run: |
-        cd ${{ env.PROJECT_PATH }}
+        cd ${{ env.SOLUTION_PATH }}
 
         dotnet restore  ${{ env.PROJECT_FILE }} \
           -p:TargetFramework=${{ env.DOTNET_TARGET_VERSION }}-ios \
@@ -390,7 +490,7 @@ jobs:
         MD_APPLE_SDK_ROOT: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT }}.app
         XCODE_DEVELOPER_DIR_PATH: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT  }}.app/Contents/Developer   
       run: |
-        cd ${{ env.PROJECT_PATH }}
+        cd ${{ env.SOLUTION_PATH }}
 
         echo "Proyecto: ${{ env.PROJECT_FILE }}"
 
