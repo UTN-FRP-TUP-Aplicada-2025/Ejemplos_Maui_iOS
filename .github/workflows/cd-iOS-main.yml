@@ -532,14 +532,14 @@ jobs:
         echo "Limpiando firmas previas y atributos corruptos..."
         xattr -cr "${{ env.APP_PATH }}"
         rm -rf "${{ env.APP_PATH }}/_CodeSignature"
-        chmod +x "${{ env.APP_PATH }}/${{ PROJECT_FOLDER }}"
+        chmod +x "${{ env.APP_PATH }}/${{ env.PROJECT_FOLDER }}"
 
         echo "Firmando contenido interno (DLLs y AOT) uno por uno..."
         # Esto asegura que cada archivo tenga su propio sello individual
         find "${{ env.APP_PATH }}" -name "*.dll" -or -name "*.dylib" -or -name "*.aotdata*" | xargs codesign --force --sign "-" --timestamp=none
         
         echo "Firmando el binario principal con los Entitlements..."
-        codesign --force --sign "-" --timestamp=none --entitlements "$ENTITLEMENTS_PATH" "${{ env.APP_PATH }}/${{ PROJECT_FOLDER }}"
+        codesign --force --sign "-" --timestamp=none --entitlements "$ENTITLEMENTS_PATH" "${{ env.APP_PATH }}/${{ env.PROJECT_FOLDER }}"
         
         echo "Sellado final del paquete (Bundle)..."
         codesign --force --sign "-" --timestamp=none "${{ env.APP_PATH }}"
