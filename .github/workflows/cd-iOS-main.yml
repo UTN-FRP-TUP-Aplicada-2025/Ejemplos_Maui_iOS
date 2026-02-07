@@ -523,44 +523,37 @@ jobs:
 
         echo "BASE_PATH=$BASE_PATH" >> $GITHUB_ENV
         echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
-        
-    - name: BUILD SIMULADOR. Firma robusta
-      run: |        
+           
+    - name: BUILD SIMULADOR. Firma robusta 
+      run: |
         APP_FOLDER="${{ env.PROJECT_FOLDER }}.app"
         ENTITLEMENTS_PATH="${{ env.PROJECT_PATH }}/Platforms/iOS/Entitlements.Development.plist"
+    
+        echo "Limpiando firmas previas y atributos corruptos..."
+        xattr -cr "${{ APP_PATH }}"
+        rm -rf "${{ APP_PATH }}/_CodeSignature"
+        chmod +x "${{ env.APP_PATH  }}/${{ PROJECT_FOLDER }}"
 
-        echo "PATH BASE: $(ls -lsh $BASE_PATH)"
-
-        cd $BASE_PATH
-        PAYLOAD_APP="${{ env.BASE_PATH }}"
-
-        echo "Limpiando atributos extendidos..."
-        xattr -cr "$PAYLOAD_APP"
-
-        echo "Firmando componentes internos con certificado real..."
-        find "$PAYLOAD_APP" -name "*.dll" -or -name "*.dylib" -or -name "*.framework" -or -name "*.aotdata*" | while read item; do
-            codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp "$item"
-        done
-       
-        echo "Firmando el binario principal..."
-        codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp --entitlements "$ENTITLEMENTS_PATH" "$PAYLOAD_APP/$APP_FOLDER"
-
-        echo "Sellado final del Bundle (CON Entitlements)..."
-        codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp --entitlements "$ENTITLEMENTS_PATH" --generate-entitlement-der "$PAYLOAD_APP"
-
-        echo "Verificación de Entitlements inyectados:"
-        codesign -d --entitlements :- "$PAYLOAD_APP/$APP_FOLDER"
-      
-        echo "Dirá si el sellado final realmente capturó el permiso de Push"
-        codesign -d --entitlements :- "$PAYLOAD_APP/$APP_FOLDER" | grep "aps-environment"
-      
+        echo "Firmando contenido interno (DLLs y AOT) uno por uno..."
+        # Esto asegura que cada archivo tenga su propio sello individual
+        find "${{ env.APP_PATH }}" -name "*.dll" -or -name "*.dylib" -or -name "*.aotdata*" | xargs codesign --force --sign "-" --timestamp=none
+        
+        echo "Firmando el binario principal con los Entitlements..."
+        codesign --force --sign "-" --timestamp=none --entitlements "$ENTITLEMENTS_PATH" "$APP_PATH/${{ PROJECT_FOLDER }}"
+        
+        echo "Sellado final del paquete (Bundle)..."
+        codesign --force --sign "-" --timestamp=none "${{ env.APP_PATH }}"
+        
         echo "Verificando identidad"
         codesign -vv -d "${{ env.APP_PATH }}"
 
         cd ${{ env.SOLUTION_PATH }}
-                
+
     - name: BUILD SIMULADOR. Test entitlements
-      run: |
+      run: |  
+        # Ver qué arquitectura tiene (Debe decir arm64)
+        file "${{ env.APP_PATH }}/${{ env.PROJECT_FOLDER }}"
+
         /usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "${{ env.APP_PATH }}/Info.plist"
 
         codesign -d --entitlements :- "${{ env.APP_PATH }}/${{ env.PROJECT_FOLDER }}"
@@ -569,16 +562,16 @@ jobs:
       run: |  
         echo "BASE_PATH: $BASE_PATH"
 
-        echo "APP_PATH: $APP_PATH"
+        echo "APP_PATH: ${{ env.APP_PATH }}"
 
-        ZIP_NAME="${{ env.VERSION_FECHA }}_${ APP_VERSION_BUILD }_${{ env.PACKAGE_NAME }}.app.zip"
+        ZIP_NAME="${{ env.VERSION_FECHA }}_${{ env.APP_VERSION_BUILD }}_${{ env.PACKAGE_NAME }}.app.zip"
         echo "ZIP NAME: $ZIP_NAME"
 
-        cd "$BASE_PATH"
+        cd "${{ env.BASE_PATH }}"
         zip -ry "$ZIP_NAME" "${{ env.PROJECT_FOLDER }}.app"
                 
         echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
-        echo "ZIP_PATH=${BASE_PATH}/${ZIP_NAME}" >> $GITHUB_ENV    
+        echo "ZIP_PATH=${{ env.BASE_PATH }}/$ZIP_NAME" >> $GITHUB_ENV    
         
     - name: RELEASE SIMULADOR. Subir appName.app.zip como artefacto
       uses: actions/upload-artifact@v4
