@@ -21,10 +21,10 @@ env:
   XCODE_FILE_INSTALLER: 'Xcode_26_Universal.xip'
   XCODE_GOOGLE_FILE_INSTALLER_ID: '1GoDmCUBOMKM5nnXCXxxnAgoKpSwZvaMP'
 
-  DOTNET_VERSION: '10.0.101'
+  DOTNET_VERSION: '10.0.102'
   DOTNET_TARGET_VERSION: 'net10.0'
 
-  DOTNET_VERSION_WORKLOAD: '10.0.102'
+  DOTNET_VERSION_WORKLOAD: '10.0.100'
 
   PACKAGE_NAME: 'com.ejemplos.ios'
   SOLUTION_FOLDER: 'Ejemplo_iOS'
@@ -523,10 +523,10 @@ jobs:
 
         echo "BASE_PATH=$BASE_PATH" >> $GITHUB_ENV
         echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
-
+        
     - name: BUILD SIMULADOR. Firma robusta
       run: |        
-        APP_PATH_NAME="${{ env.PROJECT_FOLDER }}.app"
+        APP_FOLDER="${{ env.PROJECT_FOLDER }}.app"
         ENTITLEMENTS_PATH="${{ env.PROJECT_PATH }}/Platforms/iOS/Entitlements.Development.plist"
 
         echo "PATH BASE: $(ls -lsh $BASE_PATH)"
@@ -543,19 +543,21 @@ jobs:
         done
        
         echo "Firmando el binario principal..."
-        codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp --entitlements "$ENTITLEMENTS_PATH" "$PAYLOAD_APP/$APP_PATH_NAME"
+        codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp --entitlements "$ENTITLEMENTS_PATH" "$PAYLOAD_APP/$APP_FOLDER"
 
         echo "Sellado final del Bundle (CON Entitlements)..."
         codesign --force --sign "$CERT_NAME" --keychain "$KEYCHAIN_PATH" --timestamp --entitlements "$ENTITLEMENTS_PATH" --generate-entitlement-der "$PAYLOAD_APP"
 
         echo "Verificación de Entitlements inyectados:"
-        codesign -d --entitlements :- "$PAYLOAD_APP/$APP_PATH_NAME"
+        codesign -d --entitlements :- "$PAYLOAD_APP/$APP_FOLDER"
       
         echo "Dirá si el sellado final realmente capturó el permiso de Push"
-        codesign -d --entitlements :- "$PAYLOAD_APP/$APP_PATH_NAME" | grep "aps-environment"
+        codesign -d --entitlements :- "$PAYLOAD_APP/$APP_FOLDER" | grep "aps-environment"
       
         echo "Verificando identidad"
         codesign -vv -d "${{ env.APP_PATH }}"
+
+        cd ${{ env.SOLUTION_PATH }}
                 
     - name: BUILD SIMULADOR. Test entitlements
       run: |
